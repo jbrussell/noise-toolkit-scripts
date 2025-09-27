@@ -1,0 +1,112 @@
+# Plot power-spectral densities
+
+%load_ext autoreload
+%autoreload
+from setup_parameters import *
+import matplotlib.pyplot as plt
+import obspy
+from obspy.clients.fdsn import Client
+from obspy import UTCDateTime
+import numpy as np
+import os
+from pathlib import Path
+import pandas as pd
+
+from noisemodels import accNLNM,accNHNM
+
+# %% codecell
+
+path2bin = './bin/' # Set path to your environment executables
+
+xtype = 'period' # period or frequency
+sw_width = 0.25 # 1/4 Smoothing window width in octave
+sw_shift = 0.125 # 1/8 Smoothing window shift in fraction of octave
+
+webservice = "IRIS"
+
+## CEDAR CITY, UT
+# Define station parameters
+network = 'TA'
+sta = 'S14A'
+loc = '--'
+compstr = "BHZ"
+tstart = "2008-08-14T12:00:00"
+tend = "2008-09-14T12:00:00"
+
+
+# %% codecell
+# LOAD CLIENT
+client = Client(webservice)
+print(client)
+# LOAD STATIONS
+t1 = UTCDateTime(tstart)
+t2 = UTCDateTime(tend)
+inventory = client.get_stations(network=network, station=sta, channel=compstr, starttime=t1, endtime=t2)
+print(inventory)
+stadir = './stations/'
+if not os.path.exists(stadir):
+    os.makedirs(stadir)
+file = open(stadir+network+'.'+sta+'.'+loc+'.txt', 'w')
+for ista in range(0,len(inventory[0])) :
+    file.write("%5s %5s %12f %12f %12f\n" % (
+                                        inventory[0].code,
+                                        inventory[0].stations[ista]._code, 
+                                        inventory[0].stations[ista]._latitude, 
+                                        inventory[0].stations[ista]._longitude, 
+                                        inventory[0].stations[ista]._elevation))
+file.close()
+
+# %% codecell
+# Run PSD computation
+
+!{'python3 '+path2bin+'ntk_computePSD.py'} net={network} sta={sta} loc={loc} chan={compstr} start={tstart} end={tend} xtype={xtype} sw_width={sw_width} sw_shift={sw_shift} plot=0
+
+# %% codecell
+# Gather PSDs
+
+path2psdDb = './data/psdDb/'+network+'.'+sta+'.'+loc+'/'+compstr+'/'
+
+pathlist = sorted(Path(path2psdDb).glob('*/*/*.'+xtype+'.txt'))
+
+list_of_dfs = []
+for path in pathlist:
+    df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
+    # sta = data.sta[0]
+    df = df.set_index(xtype)
+
+    list_of_dfs.append(df)
+
+# Concatinate psd dataframe
+dfs = pd.concat(list_of_dfs, ignore_index=True,axis=1)
+
+# Drop nan values
+dfs = dfs.dropna()
+
+# %%
+# Plot PSDs
+
+plotunit = 2 # 0: displacement, 1: velocity, 2: acceleration
+
+plt.figure(figsize=(10,6))
+plt.semilogx(dfs, color='gray', alpha=0.5)
+# Plot median
+plt.semilogx(dfs.median(axis=1), color='red', alpha=1, linewidth=2, label='Median')
+# Plot 97.5% quantile
+plt.semilogx(dfs.quantile(q=0.975,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='97.5')
+# Plot 2.5% quantile
+plt.semilogx(dfs.quantile(q=0.025,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='2.5')
+# Plot noise models
+freqs = 1/dfs.index.values
+plt.semilogx(1/freqs, 10*np.log10(accNLNM(freqs) / (2*np.pi*freqs)**(2-plotunit)),
+              c='blue', label='NLNM')
+plt.semilogx(1/freqs, 10*np.log10(accNHNM(freqs) / (2*np.pi*freqs)**(2-plotunit)),
+            c='blue', label='NHNM')
+plt.xlim([0.05,200])
+plt.ylim([-200,0])
+plt.xlabel('Period (s)')
+plt.ylabel('Power/Frequency (dB rel. 1 (m/s)^2/Hz)')
+plt.title(network+'.'+sta+'.'+loc+' '+compstr)
+# plt.grid(which='both', linestyle='--', linewidth=0.5)
+plt.legend()
+plt.show()
+
