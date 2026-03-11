@@ -1,4 +1,4 @@
-# Plot power-spectral densities and save quantiles
+# Plot amplitude-spectral densities and save quantiles
 
 %load_ext autoreload
 %autoreload
@@ -40,11 +40,18 @@ for ista in range(0,len(inventory[0])) :
 file.close()
 
 # %% codecell
+# Run PSD computation
+
+# !{'python3 '+path2bin+'ntk_computePSD.py'} net={network} sta={sta} loc={loc} chan={compstr} start={tstart} end={tend} xtype={xtype} sw_width={sw_width} sw_shift={sw_shift} plot=0
+
+# %% codecell
 # Gather PSDs
 
 path2psdDb = './data/psdDb/'+network+'.'+sta+'.'+loc+'/'+compstr+'/'
 
 pathlist = sorted(Path(path2psdDb).glob('*/*/*.'+xtype+'.txt'))
+
+plotunit = 0 # 0: displacement (m/sqrt(Hz)), 1: velocity, 2: acceleration
 
 list_of_dfs = []
 for path in pathlist:
@@ -53,6 +60,8 @@ for path in pathlist:
     df = df.set_index(xtype)
 
     freqs = 1/df.index.values
+
+    df = 10**(df['psd']/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
 
     list_of_dfs.append(df)
 
@@ -64,35 +73,36 @@ dfs = dfs.dropna()
 
 # %%
 # Convert everything to m/sqrt(Hz)
-plotunit = 2 # 0: displacement, 1: velocity, 2: acceleration
 
 dfs.index = 1/dfs.index
 freqs = dfs.index.values
 
-nlnm_db = 10*np.log10(accNLNM(freqs) / (2*np.pi*freqs)**(2-plotunit))
+nlnm_db = 10*np.log10(accNLNM(freqs))
+nlnm_m_hz = 10**(nlnm_db/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
 
-nhnm_db = 10*np.log10(accNHNM(freqs) / (2*np.pi*freqs)**(2-plotunit))
+nhnm_db = 10*np.log10(accNHNM(freqs))
+nhnm_m_hz = 10**(nhnm_db/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
 
 # %%
 # Plot PSDs
 
 plt.figure(figsize=(10,6))
-plt.semilogx(dfs, color='gray', alpha=0.5)
+plt.loglog(dfs, color='gray', alpha=0.5)
 # Plot median
-plt.semilogx(dfs.median(axis=1), color='red', alpha=1, linewidth=2, label='Median')
+plt.loglog(dfs.median(axis=1), color='red', alpha=1, linewidth=2, label='Median')
 # Plot 97.5% quantile
-plt.semilogx(dfs.quantile(q=0.975,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='97.5')
+plt.loglog(dfs.quantile(q=0.975,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='97.5')
 # Plot 2.5% quantile
-plt.semilogx(dfs.quantile(q=0.025,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='2.5')
+plt.loglog(dfs.quantile(q=0.025,axis=1), linestyle='--', color='red', alpha=1, linewidth=2, label='2.5')
 # Plot noise models
-plt.semilogx(freqs, nlnm_db,
+plt.loglog(freqs, nlnm_m_hz,
               c='blue', label='NLNM')
-plt.semilogx(freqs, nhnm_db,
+plt.loglog(freqs, nhnm_m_hz,
             c='blue', label='NHNM')
 plt.xlim([0.005,20])
-plt.ylim([-200,-50])
+plt.ylim([1e-12,1e-4])
 plt.xlabel('Frequency (Hz)')
-plt.ylabel('Power (dB rel. 1 (m/s^2)^2/Hz)')
+plt.ylabel(r'$m/\sqrt{Hz}$')
 plt.title(network+'.'+sta+'.'+loc+' '+compstr+'\n'+tstart+' to '+tend)
 # plt.grid(which='both', linestyle='--', linewidth=0.5)
 plt.legend()
@@ -100,7 +110,7 @@ plt.tight_layout()
 figout = './figs/'
 if not os.path.exists(figout):
     os.makedirs(figout)
-plt.savefig(figout+network+'.'+sta+'.'+loc+'.'+compstr+'_PSD.pdf', dpi=300)
+plt.savefig(figout+network+'.'+sta+'.'+loc+'.'+compstr+'_ASD.pdf', dpi=300)
 plt.show()
 
 
@@ -109,22 +119,22 @@ plt.show()
 # Save median and quantiles to csv file
 df_out = pd.DataFrame(
     {'freq': dfs.index.values,
-     'psd_1': dfs.quantile(q=0.01,axis=1),
-     'psd_2.5': dfs.quantile(q=0.025,axis=1),
-     'psd_5': dfs.quantile(q=0.05,axis=1),
-     'psd_10': dfs.quantile(q=0.1,axis=1),
-     'psd_25': dfs.quantile(q=0.25,axis=1),
-     'psd_50': dfs.quantile(q=0.5,axis=1),
-     'psd_75': dfs.quantile(q=0.75,axis=1),
-     'psd_90': dfs.quantile(q=0.90,axis=1),
-     'psd_95': dfs.quantile(q=0.95,axis=1),
-     'psd_97.5': dfs.quantile(q=0.975,axis=1),
-     'psd_99': dfs.quantile(q=0.99,axis=1),
+     'asd_1': dfs.quantile(q=0.01,axis=1),
+     'asd_2.5': dfs.quantile(q=0.025,axis=1),
+     'asd_5': dfs.quantile(q=0.05,axis=1),
+     'asd_10': dfs.quantile(q=0.1,axis=1),
+     'asd_25': dfs.quantile(q=0.25,axis=1),
+     'asd_50': dfs.quantile(q=0.5,axis=1),
+     'asd_75': dfs.quantile(q=0.75,axis=1),
+     'asd_90': dfs.quantile(q=0.90,axis=1),
+     'asd_95': dfs.quantile(q=0.95,axis=1),
+     'asd_97.5': dfs.quantile(q=0.975,axis=1),
+     'asd_99': dfs.quantile(q=0.99,axis=1),
     })
 df_out = df_out.reset_index()
 df_out = df_out.drop('period', axis=1)
 
-folder_to_create = './quantiles_PSD/'
+folder_to_create = './quantiles_ASD/'
 if not os.path.exists(folder_to_create):
     os.makedirs(folder_to_create)
 

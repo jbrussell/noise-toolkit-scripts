@@ -16,23 +16,6 @@ from noisemodels import accNLNM,accNHNM
 
 # %% codecell
 
-path2bin = './bin/' # Set path to your environment executables
-
-xtype = 'period' # period or frequency
-sw_width = 0.25 # 1/4 Smoothing window width in octave
-sw_shift = 0.125 # 1/8 Smoothing window shift in fraction of octave
-
-webservice = "IRIS"
-
-## CEDAR CITY, UT
-# Define station parameters
-network = 'TA'
-sta = 'S14A'
-loc = '--'
-compstr = "BHZ"
-tstart = "2008-08-14T12:00:00"
-tend = "2008-09-14T12:00:00"
-
 
 # %% codecell
 # LOAD CLIENT
@@ -104,7 +87,7 @@ plt.semilogx(1/freqs, 10*np.log10(accNHNM(freqs) / (2*np.pi*freqs)**(2-plotunit)
 plt.xlim([0.05,200])
 plt.ylim([-200,0])
 plt.xlabel('Period (s)')
-plt.ylabel('Power/Frequency (dB rel. 1 (m/s)^2/Hz)')
+plt.ylabel('Power (dB rel. 1 (m/s^2)^2/Hz)')
 plt.title(network+'.'+sta+'.'+loc+' '+compstr)
 # plt.grid(which='both', linestyle='--', linewidth=0.5)
 plt.legend()
