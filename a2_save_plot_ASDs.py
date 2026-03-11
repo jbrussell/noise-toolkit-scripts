@@ -1,4 +1,4 @@
-# Plot amplitude-spectral densities and save quantiles
+# Plot amplitude-spectral densities and save quantiles defined between tstart and tend
 
 %load_ext autoreload
 %autoreload
@@ -11,6 +11,7 @@ import numpy as np
 import os
 from pathlib import Path
 import pandas as pd
+from datetime import datetime, timedelta
 
 from noisemodels import accNLNM,accNHNM
 
@@ -53,17 +54,24 @@ pathlist = sorted(Path(path2psdDb).glob('*/*/*.'+xtype+'.txt'))
 
 plotunit = 0 # 0: displacement (m/sqrt(Hz)), 1: velocity, 2: acceleration
 
+# Build daily datetime vector
+datevec = np.arange(pd.to_datetime(tstart),pd.to_datetime(tend),timedelta(days=1))
+
 list_of_dfs = []
-for path in pathlist:
-    df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
-    # sta = data.sta[0]
-    df = df.set_index(xtype)
+for day in datevec:
+    doy = pd.to_datetime(day).dayofyear
+    pathlist = sorted(Path(path2psdDb).glob('*/'+str(doy)+'/*.'+xtype+'.txt'))
 
-    freqs = 1/df.index.values
+    for path in pathlist:
+        df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
+        # sta = data.sta[0]
+        df = df.set_index(xtype)
 
-    df = 10**(df['psd']/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
+        freqs = 1/df.index.values
 
-    list_of_dfs.append(df)
+        df = 10**(df['psd']/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
+
+        list_of_dfs.append(df)
 
 # Concatinate psd dataframe
 dfs = pd.concat(list_of_dfs, ignore_index=True,axis=1)
@@ -110,7 +118,7 @@ plt.tight_layout()
 figout = './figs/'
 if not os.path.exists(figout):
     os.makedirs(figout)
-plt.savefig(figout+network+'.'+sta+'.'+loc+'.'+compstr+'_ASD.pdf', dpi=300)
+plt.savefig(figout+network+'.'+sta+'.'+loc+'.'+compstr+'.'+datevec[0].item().strftime('%Y-%m-%d')+'.'+datevec[-1].item().strftime('%Y-%m-%d')+'_ASD.pdf', dpi=300)
 plt.show()
 
 
@@ -138,7 +146,7 @@ folder_to_create = './quantiles_ASD/'
 if not os.path.exists(folder_to_create):
     os.makedirs(folder_to_create)
 
-df_out.to_csv(folder_to_create+network+'.'+sta+'.'+loc+'.'+compstr+'.csv', index=False) 
+df_out.to_csv(folder_to_create+network+'.'+sta+'.'+loc+'.'+compstr+'.'+datevec[0].item().strftime('%Y-%m-%d')+'.'+datevec[-1].item().strftime('%Y-%m-%d')+'.csv', index=False) 
 
 # # Save NLNM and NHNM to csv file
 # df_nnm = pd.DataFrame(
