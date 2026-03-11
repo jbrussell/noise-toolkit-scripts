@@ -11,6 +11,7 @@ import numpy as np
 import os
 from pathlib import Path
 import pandas as pd
+from datetime import datetime, timedelta
 
 from noisemodels import accNLNM,accNHNM
 
@@ -51,13 +52,23 @@ path2psdDb = './data/psdDb/'+network+'.'+sta+'.'+loc+'/'+compstr+'/'
 
 pathlist = sorted(Path(path2psdDb).glob('*/*/*.'+xtype+'.txt'))
 
-list_of_dfs = []
-for path in pathlist:
-    df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
-    # sta = data.sta[0]
-    df = df.set_index(xtype)
+# Build daily datetime vector
+datevec = np.arange(pd.to_datetime(tstart),pd.to_datetime(tend),timedelta(days=1))
 
-    list_of_dfs.append(df)
+list_of_dfs = []
+for day in datevec:
+    doy = pd.to_datetime(day).dayofyear
+    year = pd.to_datetime(day).year
+    pathlist = sorted(Path(path2psdDb).glob(str(year)+'/'+str(doy)+'/*.'+xtype+'.txt'))
+
+    for path in pathlist:
+        df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
+        # sta = data.sta[0]
+        df = df.set_index(xtype)
+
+        freqs = 1/df.index.values
+
+        list_of_dfs.append(df)
 
 # Concatinate psd dataframe
 dfs = pd.concat(list_of_dfs, ignore_index=True,axis=1)
