@@ -51,6 +51,7 @@ pathlist = sorted(Path(path2psdDb).glob('*/*/*.'+xtype+'.txt'))
 datevec = np.arange(pd.to_datetime(tstart),pd.to_datetime(tend),timedelta(days=1))
 
 list_of_dfs = []
+freq_ref = None
 for day in datevec:
     doy = pd.to_datetime(day).dayofyear
     year = pd.to_datetime(day).year
@@ -63,13 +64,21 @@ for day in datevec:
 
         freqs = 1/df.index.values
 
+        # Check that the frequency axis is the same
+        if freq_ref is None:
+            freq_ref = freqs
+        else:
+            if not np.allclose(freq_ref, freqs):
+                print('Bad freq axis: Skipping '+str(path))
+                continue
+
         list_of_dfs.append(df)
 
 # Concatinate psd dataframe
 dfs = pd.concat(list_of_dfs, ignore_index=True,axis=1)
 
 # Drop nan values
-dfs = dfs.dropna()
+dfs = dfs.dropna(how='all')
 
 # %%
 # Convert everything to m/sqrt(Hz)
