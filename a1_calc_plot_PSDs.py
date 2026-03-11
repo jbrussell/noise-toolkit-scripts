@@ -59,7 +59,7 @@ list_of_dfs = []
 for day in datevec:
     doy = pd.to_datetime(day).dayofyear
     year = pd.to_datetime(day).year
-    pathlist = sorted(Path(path2psdDb).glob(str(year)+'/'+str(doy)+'/*.'+xtype+'.txt'))
+    pathlist = sorted(Path(path2psdDb+str(year)+'/').glob('*'+str(doy)+'/*.'+xtype+'.txt'))
 
     for path in pathlist:
         df = pd.read_table(path, delim_whitespace=True,skiprows=[0],names=[xtype,'psd'])
