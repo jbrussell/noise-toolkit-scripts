@@ -71,7 +71,7 @@ for day in datevec:
             freq_ref = freqs
             period_ref = periods
         else:
-            interp_vals = np.interp(period_ref, df.index.to_numpy(), df.to_numpy())
+            interp_vals = np.interp(np.squeeze(period_ref), np.squeeze(df.index.to_numpy()), np.squeeze(df.to_numpy()))
             s = pd.Series(interp_vals, index=period_ref)
             s.index.name = 'period'
             df = s
