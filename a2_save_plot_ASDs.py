@@ -59,6 +59,7 @@ datevec = np.arange(pd.to_datetime(tstart),pd.to_datetime(tend),timedelta(days=1
 
 list_of_dfs = []
 freq_ref = None
+period_ref = None
 for day in datevec:
     doy = pd.to_datetime(day).dayofyear
     year = pd.to_datetime(day).year
@@ -69,17 +70,20 @@ for day in datevec:
         # sta = data.sta[0]
         df = df.set_index(xtype)
 
-        freqs = 1/df.index.values
+        periods = df.index.values
+        freqs = 1/periods
 
         df = 10**(df['psd']/20)/(2*np.pi*freqs)**(2-plotunit) # convert dB rel m**2/s**4/Hz --> m/Hz**0.5 (not log)
         
-        # Check that the frequency axis is the same
+        # Interpolate to common period axis
         if freq_ref is None:
             freq_ref = freqs
+            period_ref = periods
         else:
-            if not np.allclose(freq_ref, freqs):
-                print('Bad freq axis: Skipping '+str(path))
-                continue
+            interp_vals = np.interp(period_ref, df.index.to_numpy(), df.to_numpy())
+            s = pd.Series(interp_vals, index=period_ref)
+            s.index.name = 'period'
+            df = s
 
         list_of_dfs.append(df)
 
