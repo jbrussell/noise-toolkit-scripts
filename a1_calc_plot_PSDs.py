@@ -1,7 +1,7 @@
 # Plot power-spectral densities
 
-%load_ext autoreload
-%autoreload
+# %load_ext autoreload
+# %autoreload
 from setup_parameters import *
 import matplotlib.pyplot as plt
 import obspy
@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime, timedelta
+import subprocess
 
 from noisemodels import accNLNM,accNHNM
 
@@ -43,7 +44,23 @@ file.close()
 # %% codecell
 # Run PSD computation
 
-!{'python3 '+path2bin+'ntk_computePSD.py'} net={network} sta={sta} loc={loc} chan={compstr} start={tstart} end={tend} xtype={xtype} sw_width={sw_width} sw_shift={sw_shift} plot=0
+# !{'python3 '+path2bin+'ntk_computePSD.py'} net={network} sta={sta} loc={loc} chan={compstr} start={tstart} end={tend} xtype={xtype} sw_width={sw_width} sw_shift={sw_shift} plot=0
+
+cmd = [
+    "python3", path2bin + "ntk_computePSD.py",
+    f"net={network}",
+    f"sta={sta}",
+    f"loc={loc}",
+    f"chan={compstr}",
+    f"start={tstart}",
+    f"end={tend}",
+    f"xtype={xtype}",
+    f"sw_width={sw_width}",
+    f"sw_shift={sw_shift}",
+    "plot=0"
+]
+
+subprocess.run(cmd, check=True)
 
 # %% codecell
 # Gather PSDs

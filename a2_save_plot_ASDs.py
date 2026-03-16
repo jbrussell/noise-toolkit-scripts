@@ -1,7 +1,7 @@
 # Plot amplitude-spectral densities and save quantiles defined between tstart and tend
 
-%load_ext autoreload
-%autoreload
+# %load_ext autoreload
+# %autoreload
 from setup_parameters import *
 import matplotlib.pyplot as plt
 import obspy
@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime, timedelta
+import subprocess
 
 from noisemodels import accNLNM,accNHNM
 
